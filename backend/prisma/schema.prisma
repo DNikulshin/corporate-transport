@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String   // bcrypt hash
+  fullName  String
+  role      Role     @default(EMPLOYEE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicleId String?  @unique
+
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  name        String   // "Газель 001"
+  plateNumber String   @unique
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  driver      User?
+
+  positionLogs PositionLog[]
+
+  @@map("vehicles")
+}
+
+model PositionLog {
+  id        BigInt   @id @default(autoincrement())
+  vehicleId String
+  lat       Float
+  lng       Float
+  heading   Float?
+  speed     Float?
+  accuracy  Float?
+  createdAt DateTime @default(now())
+
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId, createdAt])
+  @@map("position_logs")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+enum Role {
+  DRIVER
+  EMPLOYEE
+}
