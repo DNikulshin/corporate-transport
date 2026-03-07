@@ -1,12 +1,20 @@
-import { Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LoginForm } from '@/features/auth'
 import { useAuthStore } from '@/features/auth'
 import { ROUTES } from '@/shared/config/routes'
 
 export default function AuthPage() {
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
 
-  if (isAuthenticated) return <Navigate to={ROUTES.MAP} replace />
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(ROUTES.MAP, { replace: true })
+    }
+  }, [isAuthenticated, navigate])
+
+  if (isAuthenticated) return null
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">

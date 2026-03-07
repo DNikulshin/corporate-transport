@@ -103,11 +103,18 @@ export async function trackingRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid token' })
     }
 
+    const corsOrigin =
+      process.env.CORS_ORIGIN === 'all'
+        ? '*'
+        : process.env.FRONTEND_URL ?? 'http://localhost:3000'
+
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Credentials': 'true',
     })
 
     const send = (data: object) => {

@@ -54,7 +54,7 @@ export function useGpsSender(): UseGpsSenderResult {
     setStatus('active')
     setErrorMessage(null)
 
-    const ws = new WsClient('/ws/tracking')
+    const ws = new WsClient('/api/tracking/ws')
     wsRef.current = ws
 
     ws.on('open', () => flushQueue(ws))

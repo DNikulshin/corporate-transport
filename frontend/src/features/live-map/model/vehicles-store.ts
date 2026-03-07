@@ -2,45 +2,36 @@ import { create } from 'zustand'
 import type { VehicleWithPosition, VehiclePosition } from '@/shared/domain/vehicle'
 
 interface VehiclesState {
-  vehicles: Map<string, VehicleWithPosition>
+  vehicles: VehicleWithPosition[]
   lastUpdated: number | null
 
   setVehicles: (vehicles: VehicleWithPosition[]) => void
   updatePosition: (pos: VehiclePosition) => void
   setVehicleOffline: (vehicleId: string) => void
-  getAll: () => VehicleWithPosition[]
 }
 
-export const useVehiclesStore = create<VehiclesState>((set, get) => ({
-  vehicles: new Map(),
+export const useVehiclesStore = create<VehiclesState>((set) => ({
+  vehicles: [],
   lastUpdated: null,
 
   setVehicles: (vehicles) => {
-    const map = new Map(vehicles.map((v) => [v.id, v]))
-    set({ vehicles: map, lastUpdated: Date.now() })
+    set({ vehicles, lastUpdated: Date.now() })
   },
 
   updatePosition: (pos) => {
-    set((state) => {
-      const vehicles = new Map(state.vehicles)
-      const existing = vehicles.get(pos.vehicleId)
-      if (existing) {
-        vehicles.set(pos.vehicleId, { ...existing, position: pos, isActive: true })
-      }
-      return { vehicles, lastUpdated: Date.now() }
-    })
+    set((state) => ({
+      vehicles: state.vehicles.map((v) =>
+        v.id === pos.vehicleId ? { ...v, position: pos, isActive: true } : v,
+      ),
+      lastUpdated: Date.now(),
+    }))
   },
 
   setVehicleOffline: (vehicleId) => {
-    set((state) => {
-      const vehicles = new Map(state.vehicles)
-      const existing = vehicles.get(vehicleId)
-      if (existing) {
-        vehicles.set(vehicleId, { ...existing, isActive: false })
-      }
-      return { vehicles }
-    })
+    set((state) => ({
+      vehicles: state.vehicles.map((v) =>
+        v.id === vehicleId ? { ...v, isActive: false } : v,
+      ),
+    }))
   },
-
-  getAll: () => Array.from(get().vehicles.values()),
 }))

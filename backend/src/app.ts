@@ -14,8 +14,13 @@ async function main() {
   })
 
   // Plugins
+  const corsOrigin =
+    process.env.CORS_ORIGIN === 'all'
+      ? true
+      : process.env.FRONTEND_URL ?? 'http://localhost:3000'
+
   await app.register(fastifyCors, {
-    origin: process.env.FRONTEND_URL ?? 'https://3000-firebase-corporate-transport-1772806466665.cluster-jgdkb37mtnfb4urxtja5guzqog.cloudworkstations.dev',
+    origin: corsOrigin,
     credentials: true,
   })
 

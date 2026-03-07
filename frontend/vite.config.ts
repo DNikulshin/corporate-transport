@@ -74,12 +74,12 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://4000-firebase-corporate-transport-1772806466665.cluster-jgdkb37mtnfb4urxtja5guzqog.cloudworkstations.dev',
+        target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false,
       },
       '/ws': {
-        target: 'wss://4000-firebase-corporate-transport-1772806466665.cluster-jgdkb37mtnfb4urxtja5guzqog.cloudworkstations.dev',
+        target: 'wss://localhost:4000',
         changeOrigin: true,
         secure: false,
         ws: true,

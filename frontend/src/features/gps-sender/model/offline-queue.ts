@@ -30,8 +30,8 @@ export const offlineQueue = {
 
   async getPending(): Promise<QueuedPosition[]> {
     const db = await getDb()
-    const all = await db.getAllFromIndex(STORE_NAME, 'synced', IDBKeyRange.only(false))
-    return all as QueuedPosition[]
+    const all = (await db.getAll(STORE_NAME)) as QueuedPosition[]
+    return all.filter((item) => !item.synced)
   },
 
   async markSynced(timestamps: number[]): Promise<void> {
@@ -49,13 +49,15 @@ export const offlineQueue = {
   async clearSynced(): Promise<void> {
     const db = await getDb()
     const tx = db.transaction(STORE_NAME, 'readwrite')
-    const synced = await tx.store.index('synced').getAllKeys(IDBKeyRange.only(true))
-    await Promise.all(synced.map((k) => tx.store.delete(k)))
+    const all = (await tx.store.getAll()) as QueuedPosition[]
+    const toDelete = all.filter((item) => item.synced).map((item) => item.timestamp)
+    await Promise.all(toDelete.map((ts) => tx.store.delete(ts)))
     await tx.done
   },
 
   async count(): Promise<number> {
     const db = await getDb()
-    return db.countFromIndex(STORE_NAME, 'synced', IDBKeyRange.only(false))
+    const all = (await db.getAll(STORE_NAME)) as QueuedPosition[]
+    return all.filter((item) => !item.synced).length
   },
 }

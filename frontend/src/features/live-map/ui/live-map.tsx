@@ -21,7 +21,7 @@ export function LiveMap() {
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleWithPosition | null>(null)
 
   const { isLoading } = useVehiclesSse()
-  const vehicles = useVehiclesStore((s) => s.getAll())
+  const vehicles = useVehiclesStore((s) => s.vehicles)
   const currentUser = useAuthStore((s) => s.user)
 
   // Загрузка Яндекс Карт v3
@@ -46,7 +46,7 @@ export function LiveMap() {
   useEffect(() => {
     if (!mapsReady || !mapContainerRef.current) return
 
-    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapControls, YMapZoomControl } = window.ymaps3
+    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer } = window.ymaps3
 
     const map = new YMap(mapContainerRef.current, {
       location: { center: MOSCOW_CENTER, zoom: 11 },
@@ -54,10 +54,6 @@ export function LiveMap() {
 
     map.addChild(new YMapDefaultSchemeLayer({ theme: 'dark' }))
     map.addChild(new YMapDefaultFeaturesLayer())
-
-    const controls = new YMapControls({ position: 'right' })
-    controls.addChild(new YMapZoomControl())
-    map.addChild(controls)
 
     mapRef.current = map
 
@@ -175,9 +171,6 @@ function createMarkerElement(
 ): HTMLElement {
   const el = document.createElement('div')
   el.className = 'cursor-pointer'
-  el.style.transform = vehicle.position?.heading
-    ? `rotate(${vehicle.position.heading}deg)`
-    : 'none'
 
   el.innerHTML = `
     <div style="

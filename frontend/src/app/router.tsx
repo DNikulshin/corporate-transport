@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { createBrowserRouter } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/shared/config/routes'
 import { useAuthStore } from '@/features/auth'
 
@@ -7,8 +8,16 @@ const AuthPage = lazy(() => import('@/pages/auth/page'))
 const MapPage = lazy(() => import('@/pages/map/page'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
-  if (!isAuthenticated) return <Navigate to={ROUTES.AUTH} replace />
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate(ROUTES.AUTH, { replace: true })
+    }
+  }, [isAuthenticated, navigate])
+
+  if (!isAuthenticated) return null
   return <>{children}</>
 }
 
@@ -36,9 +45,5 @@ export const router = createBrowserRouter([
         </Suspense>
       </ProtectedRoute>
     ),
-  },
-  {
-    path: '*',
-    element: <Navigate to={ROUTES.MAP} replace />,
   },
 ])
