@@ -5,12 +5,6 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { env } from '@/shared/config/env'
 import type { VehicleWithPosition } from '@/shared/domain/vehicle'
 
-declare global {
-  interface Window {
-    ymaps3: typeof import('@yandex/ymaps3-types')
-  }
-}
-
 const MOSCOW_CENTER = [37.617698, 55.755864] as [number, number]
 
 export function LiveMap() {
@@ -52,8 +46,11 @@ export function LiveMap() {
       location: { center: MOSCOW_CENTER, zoom: 11 },
     })
 
-    map.addChild(new YMapDefaultSchemeLayer({ theme: 'dark' }))
-    map.addChild(new YMapDefaultFeaturesLayer())
+    const schemeLayer = new YMapDefaultSchemeLayer({ theme: 'dark' } as any)
+    const featuresLayer = new (YMapDefaultFeaturesLayer as any)()
+
+    map.addChild(schemeLayer)
+    map.addChild(featuresLayer)
 
     mapRef.current = map
 

@@ -44,7 +44,7 @@ export async function trackingRoutes(app: FastifyInstance) {
 
     const redis = await getRedis()
 
-    socket.on('message', async (raw) => {
+    socket.on('message', async (raw: any) => {
       try {
         const msg = JSON.parse(raw.toString()) as { type: string; data?: PositionPayload }
         if (msg.type === 'ping') { socket.send(JSON.stringify({ type: 'pong' })); return }
