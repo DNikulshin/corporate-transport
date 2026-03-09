@@ -32,7 +32,7 @@ export function useVehiclesSse() {
     if (!accessToken) return
 
     const sse = new SseClient<SseEvent>(
-      '/api/tracking/stream',
+      '/tracking/stream',
       (event) => {
         if (event.type === 'position') updatePosition(event.data)
         else if (event.type === 'vehicle_offline') setVehicleOffline(event.vehicleId)

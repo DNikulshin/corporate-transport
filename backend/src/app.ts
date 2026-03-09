@@ -13,17 +13,22 @@ async function main() {
     },
   });
 
-  // Plugins
-  const corsOrigin =
-    process.env.CORS_ORIGIN === "all"
-      ? true
-      : process.env.FRONTEND_URL ?? "http://localhost:3000";
+  // Настройка CORS для работы и в облаке, и локально
+  const allowedOrigins = [
+    "http://localhost:3000",
+    // Разрешает любой поддомен cloudworkstations.dev (для Firebase Studio)
+    /\.cloudworkstations\.dev$/, 
+    // Разрешает любой поддомен localtunnel.me (для телефона)
+    /\.localtunnel\.me$/         
+  ];
 
   await app.register(fastifyCors, {
-    origin: corsOrigin,
+    origin: process.env.CORS_ORIGIN === "all" ? true : allowedOrigins,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   });
 
+  // Plugins
   await app.register(fastifyJwt, {
     secret: process.env.JWT_SECRET ?? "change-me-in-production-please",
   });
@@ -53,13 +58,14 @@ async function main() {
     timestamp: new Date().toISOString(),
   }));
 
+  // В Cloud Workstations важно слушать 0.0.0.0 вместо localhost
   const PORT = Number(process.env.PORT ?? 4000);
-  const HOST = process.env.HOST ?? "localhost";
+  const HOST = "0.0.0.0"; 
 
   try {
     await app.listen({ port: PORT, host: HOST });
-    console.log(`\u{1F680} Backend running on http://${HOST}:${PORT}`);
-    console.log(`📱 Network: http://${HOST}:${PORT}`);
+    console.log(`\u{1F680} Backend is accessible externally via Cloud Workstations URL`);
+    console.log(`📡 Listening on: http://${HOST}:${PORT}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

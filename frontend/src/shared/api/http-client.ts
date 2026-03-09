@@ -5,7 +5,7 @@ let _refreshPromise: Promise<string> | null = null
 
 export function createHttpClient(): AxiosInstance {
   const client = axios.create({
-    baseURL: `${env.apiUrl}/api`,
+    baseURL: `${env.apiUrl}`,
     headers: { 'Content-Type': 'application/json' },
     timeout: 15_000,
   })
@@ -53,7 +53,7 @@ async function refreshAccessToken(): Promise<string> {
   const refreshToken = localStorage.getItem('refresh_token')
   if (!refreshToken) throw new Error('No refresh token')
 
-  const res = await axios.post(`${env.apiUrl}/api/auth/refresh`, {
+  const res = await axios.post(`${env.apiUrl}/auth/refresh`, {
     refreshToken,
   })
   const { accessToken } = res.data

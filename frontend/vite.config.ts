@@ -5,10 +5,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+  publicDir: path.resolve(__dirname, 'src/public'), 
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
+      devOptions: {
+        enabled: true, // КЛЮЧЕВОЙ ФЛАГ: включает PWA в режиме разработки
+        type: 'module', // Vite использует ESM
+      },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
@@ -51,7 +56,7 @@ export default defineConfig({
           },
           {
             // API запросы
-            urlPattern: /^https?:\/\/.*\/api\/.*/i,
+            urlPattern: /^\/api\//, 
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -72,17 +77,21 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    allowedHosts: true,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'http://localhost:4000', 
+        // secure: false,
         changeOrigin: true,
-        secure: false,
+        // rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/ws': {
-        target: 'wss://localhost:4000',
+        target: 'http://localhost:4000',
         changeOrigin: true,
-        secure: false,
+        // secure: false,
         ws: true,
+        rewrite: () => '/api/tracking/ws',
       },
     },
   },

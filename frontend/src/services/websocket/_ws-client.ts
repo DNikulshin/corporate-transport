@@ -1,5 +1,3 @@
-import { env } from '@/shared/config/env'
-
 type WsEventMap = {
   open: void
   close: void
@@ -29,7 +27,12 @@ export class WsClient {
   }
 
   private _connect(token: string): void {
-    const url = `${env.wsUrl}${this.path}?token=${encodeURIComponent(token)}`
+    // Определяем протокол WebSocket (wss для https, ws для http)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Собираем URL, используя хост текущей страницы. Это гарантирует, что мы всегда
+    // обращаемся к прокси-серверу Vite, который и перенаправит запрос на бэкенд.
+    const url = `${protocol}//${window.location.host}${this.path}?token=${encodeURIComponent(token)}`
+
     this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {

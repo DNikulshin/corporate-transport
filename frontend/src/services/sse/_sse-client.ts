@@ -19,7 +19,7 @@ export class SseClient<T = unknown> {
   }
 
   connect(token: string): void {
-    const url = `${env.apiUrl}${this.path}?token=${encodeURIComponent(token)}`
+    const url = `/api${this.path}?token=${encodeURIComponent(token)}`
     this.es = new EventSource(url)
 
     this.es.onmessage = (e) => {
