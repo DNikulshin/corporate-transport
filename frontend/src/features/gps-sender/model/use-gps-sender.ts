@@ -6,6 +6,7 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { setVehicleOnline as apiSetVehicleOnline, setVehicleOffline as apiSetVehicleOffline } from '@/features/live-map/_api'
 import { useVehiclesStore } from '@/features/live-map/model/vehicles-store'
 import { bearing } from '@/shared/lib/coords'
+import { useWakeLock } from '@/shared/lib/useWakeLock' // <-- Импортируем наш новый хук
 import type { GeoPosition } from '@/services/geolocation/_geo-service'
 
 export type ShiftStatus = 'idle' | 'active' | 'error'
@@ -22,11 +23,9 @@ const SHIFT_STATUS_KEY = 'shiftStatus'
 
 export function useGpsSender(): UseGpsSenderResult {
   const user = useAuthStore((s) => s.user)
-  
-  // ИСПРАВЛЕНО: Запрашиваем каждую функцию отдельно. 
-  // Это стандартный и правильный паттерн для Zustand, который предотвращает бесконечные циклы рендеринга.
   const setVehicleOnline = useVehiclesStore((s) => s.setVehicleOnline)
   const setVehicleOffline = useVehiclesStore((s) => s.setVehicleOffline)
+  const wakeLock = useWakeLock() // <-- Инициализируем хук
 
   const wsRef = useRef<WsClient | null>(null)
   const lastPositionRef = useRef<GeoPosition | null>(null)
@@ -126,6 +125,7 @@ export function useGpsSender(): UseGpsSenderResult {
   const startShift = useCallback(async () => {
     if (!user?.vehicleId) return
 
+    wakeLock.request() // <-- Запрашиваем блокировку экрана
     setStatus('active')
     setVehicleOnline(user.vehicleId)
 
@@ -134,11 +134,12 @@ export function useGpsSender(): UseGpsSenderResult {
     } catch (err) {
       console.error('Failed to set vehicle online', err)
     }
-  }, [user, setVehicleOnline])
+  }, [user, setVehicleOnline, wakeLock])
 
   const stopShift = useCallback(async () => {
     if (!user?.vehicleId) return
 
+    wakeLock.release() // <-- Освобождаем блокировку экрана
     setStatus('idle')
     setVehicleOffline(user.vehicleId)
     setErrorMessage(null)
@@ -148,7 +149,7 @@ export function useGpsSender(): UseGpsSenderResult {
     } catch (err) {
       console.error('Failed to set vehicle offline', err)
     }
-  }, [user, setVehicleOffline])
+  }, [user, setVehicleOffline, wakeLock])
 
   return { status, pendingCount, errorMessage, startShift, stopShift }
 }
