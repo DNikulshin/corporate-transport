@@ -72,4 +72,5 @@ model RefreshToken {
 enum Role {
   DRIVER
   EMPLOYEE
+  ADMIN
 }

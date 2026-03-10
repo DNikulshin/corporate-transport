@@ -18,6 +18,10 @@ export function LiveMap() {
   const vehicles = useVehiclesStore((s) => s.vehicles)
   const currentUser = useAuthStore((s) => s.user)
 
+  // Подписываемся на ID ТС для фокусировки и на функции для управления состоянием
+  const vehicleIdToFocus = useVehiclesStore((s) => s.vehicleIdToFocus)
+  const clearFocus = useVehiclesStore((s) => s.clearFocus)
+
   const handleClosePopup = useCallback(() => {
     setSelectedVehicleId(null)
   }, [])
@@ -31,6 +35,20 @@ export function LiveMap() {
       })
     }
   }, [])
+
+  // Эффект для центрирования карты при выборе ТС из селектора
+  useEffect(() => {
+    if (vehicleIdToFocus) {
+      const vehicle = vehicles.find((v) => v.id === vehicleIdToFocus)
+      if (vehicle) {
+        handleFocusOnVehicle(vehicle)
+        // Опционально: можно также открывать попап для выбранного ТС
+        // setSelectedVehicleId(vehicle.id)
+      }
+      // Очищаем состояние, чтобы избежать повторной фокусировки при перерисовках
+      clearFocus()
+    }
+  }, [vehicleIdToFocus, vehicles, handleFocusOnVehicle, clearFocus])
 
   // Загрузка Яндекс Карт v3
   useEffect(() => {
@@ -138,14 +156,85 @@ export function LiveMap() {
         />
       )}
 
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 text-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-slate-300 font-medium">
             {vehicles.filter((v) => v.isActive).length} активных ТС
           </span>
         </div>
+        <VehicleSelector
+          vehicles={vehicles}
+          onSelect={(vehicle) => {
+            if (vehicle.position && mapRef.current) {
+              mapRef.current.setLocation({
+                center: [vehicle.position.lng, vehicle.position.lat],
+                zoom: 16,
+                duration: 500,
+              })
+            }
+          }}
+        />
       </div>
+    </div>
+  )
+}
+
+// НОВЫЙ КОМПОНЕНТ: Селектор для выбора ТС
+interface VehicleSelectorProps {
+  vehicles: VehicleWithPosition[]
+  onSelect: (vehicle: VehicleWithPosition) => void
+}
+
+function VehicleSelector({ vehicles, onSelect }: VehicleSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleSelect = (vehicle: VehicleWithPosition) => {
+    onSelect(vehicle)
+    setIsOpen(false)
+  }
+
+  const sortedVehicles = [...vehicles].sort((a, b) => a.name.localeCompare(b.name))
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full min-w-[180px] gap-2 px-3 py-2 rounded-xl bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+      >
+        {/* ИСПРАВЛЕНО: Текст кнопки унифицирован */}
+        <span>Найти ТС</span>
+        <svg
+          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute top-full mt-2 w-full max-h-60 overflow-y-auto bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 rounded-xl shadow-lg z-30">
+          <ul>
+            {sortedVehicles.map((vehicle) => (
+              <li key={vehicle.id}>
+                <button
+                  onClick={() => handleSelect(vehicle)}
+                  disabled={!vehicle.position}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-sky-500/20 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${vehicle.isActive ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                  />
+                  <span className="flex-1 truncate">
+                    {vehicle.name} <span className="text-slate-500 font-mono">{vehicle.plateNumber}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

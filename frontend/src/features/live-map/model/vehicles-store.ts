@@ -4,16 +4,20 @@ import type { VehicleWithPosition, VehiclePosition } from '@/shared/domain/vehic
 interface VehiclesState {
   vehicles: VehicleWithPosition[]
   lastUpdated: number | null
+  vehicleIdToFocus: string | null
 
   setVehicles: (vehicles: VehicleWithPosition[]) => void
   updatePosition: (pos: VehiclePosition) => void
   setVehicleOnline: (vehicleId: string) => void
   setVehicleOffline: (vehicleId: string) => void
+  focusOnVehicle: (vehicleId: string) => void
+  clearFocus: () => void
 }
 
 export const useVehiclesStore = create<VehiclesState>((set) => ({
   vehicles: [],
   lastUpdated: null,
+  vehicleIdToFocus: null,
 
   setVehicles: (vehicles) => {
     set({ vehicles, lastUpdated: Date.now() })
@@ -42,5 +46,13 @@ export const useVehiclesStore = create<VehiclesState>((set) => ({
         v.id === vehicleId ? { ...v, online: false, isActive: false } : v,
       ),
     }))
+  },
+
+  focusOnVehicle: (vehicleId: string) => {
+    set({ vehicleIdToFocus: vehicleId })
+  },
+
+  clearFocus: () => {
+    set({ vehicleIdToFocus: null })
   },
 }))
