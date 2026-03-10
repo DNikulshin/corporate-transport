@@ -24,7 +24,10 @@ export async function trackingRoutes(app: FastifyInstance) {
   app.get('/ws', { websocket: true }, async (socket, req) => {
     // Верификация токена из query
     const token = (req.query as Record<string, string>).token
-    if (!token) { socket.close(1008, 'No token'); return }
+    if (!token) {
+      socket.close(1008, 'No token')
+      return
+    }
 
     let userId: string
     let vehicleId: string
@@ -32,7 +35,10 @@ export async function trackingRoutes(app: FastifyInstance) {
       const decoded = app.jwt.verify(token) as { userId: string; role: string }
       userId = decoded.userId
       const user = await prisma.user.findUnique({ where: { id: userId } })
-      if (!user?.vehicleId) { socket.close(1008, 'No vehicle'); return }
+      if (!user?.vehicleId) {
+        socket.close(1008, 'No vehicle')
+        return
+      }
       vehicleId = user.vehicleId
     } catch {
       socket.close(1008, 'Invalid token')
@@ -47,17 +53,18 @@ export async function trackingRoutes(app: FastifyInstance) {
     socket.on('message', async (raw: any) => {
       try {
         const msg = JSON.parse(raw.toString()) as { type: string; data?: PositionPayload }
-        if (msg.type === 'ping') { socket.send(JSON.stringify({ type: 'pong' })); return }
+        if (msg.type === 'ping') {
+          socket.send(JSON.stringify({ type: 'pong' }))
+          return
+        }
         if (msg.type !== 'position' || !msg.data) return
 
         const pos = msg.data
 
         // Сохранить последнюю позицию в Redis (TTL 10 мин)
-        await redis.set(
-          REDIS_KEYS.vehiclePosition(vehicleId),
-          JSON.stringify({ ...pos, vehicleId }),
-          { EX: 600 },
-        )
+        await redis.set(REDIS_KEYS.vehiclePosition(vehicleId), JSON.stringify({ ...pos, vehicleId }), {
+          EX: 600,
+        })
 
         // Записать в БД для истории
         await prisma.positionLog.create({
@@ -104,14 +111,12 @@ export async function trackingRoutes(app: FastifyInstance) {
     }
 
     const corsOrigin =
-      process.env.CORS_ORIGIN === 'all'
-        ? '*'
-        : process.env.FRONTEND_URL ?? 'http://localhost:3000'
+      process.env.CORS_ORIGIN === 'all' ? '*' : process.env.FRONTEND_URL ?? 'http://localhost:3000'
 
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
       'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Credentials': 'true',
@@ -126,23 +131,30 @@ export async function trackingRoutes(app: FastifyInstance) {
       reply.raw.write(': keepalive\n\n')
     }, 20_000)
 
-    // Подписаться на Redis pub/sub
     const sub = await getRedisSubscriber()
 
     const handler = (message: string) => {
       try {
         const parsed = JSON.parse(message) as object
         send(parsed)
-      } catch { /* ignore */ }
+      } catch (e) {
+        console.error('Error parsing SSE message', e)
+      }
     }
 
-    await sub.subscribe(REDIS_CHANNELS.positionUpdate, handler)
-    await sub.subscribe(REDIS_CHANNELS.vehicleOffline, handler)
+    const channels = [
+      REDIS_CHANNELS.positionUpdate,
+      REDIS_CHANNELS.vehicleOnline,
+      REDIS_CHANNELS.vehicleOffline,
+    ]
+
+    await sub.subscribe(channels, handler)
 
     req.raw.on('close', async () => {
       clearInterval(keepalive)
-      await sub.unsubscribe(REDIS_CHANNELS.positionUpdate, handler)
-      await sub.unsubscribe(REDIS_CHANNELS.vehicleOffline, handler)
+      // Unsubscribe from all channels for this specific handler
+      // This is safe because node-redis handles the case where the last listener is removed.
+      await sub.unsubscribe(channels, handler)
     })
   })
 }

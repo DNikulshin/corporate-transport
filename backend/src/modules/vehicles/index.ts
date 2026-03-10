@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { PrismaClient } from '@prisma/client'
-import { getRedis, REDIS_KEYS } from '../../services/redis.js'
+import { getRedis, REDIS_CHANNELS, REDIS_KEYS } from '../../services/redis.js'
 
 const prisma = new PrismaClient()
 
@@ -23,11 +23,7 @@ export async function vehiclesRoutes(app: FastifyInstance) {
         const position = posJson ? (JSON.parse(posJson) as object) : undefined
 
         return {
-          id: v.id,
-          name: v.name,
-          plateNumber: v.plateNumber,
-          isActive: v.isActive,
-          driverId: v.driver?.id,
+          ...v,
           driverName: v.driver?.fullName,
           position,
         }
@@ -35,5 +31,35 @@ export async function vehiclesRoutes(app: FastifyInstance) {
     )
 
     return reply.send(result)
+  })
+
+  // POST /api/vehicles/:id/online — начать смену
+  app.post('/:id/online', { onRequest: [app.authenticate] }, async (req, reply) => {
+    const { id } = req.params as { id: string }
+
+    await prisma.vehicle.update({ where: { id }, data: { online: true } })
+
+    const redis = await getRedis()
+    await redis.publish(
+      REDIS_CHANNELS.vehicleOnline,
+      JSON.stringify({ type: 'vehicle_online', vehicleId: id }),
+    )
+
+    return reply.send({ ok: true })
+  })
+
+  // POST /api/vehicles/:id/offline — завершить смену
+  app.post('/:id/offline', { onRequest: [app.authenticate] }, async (req, reply) => {
+    const { id } = req.params as { id: string }
+
+    await prisma.vehicle.update({ where: { id }, data: { online: false } })
+
+    const redis = await getRedis()
+    await redis.publish(
+      REDIS_CHANNELS.vehicleOffline,
+      JSON.stringify({ type: 'vehicle_offline', vehicleId: id }),
+    )
+
+    return reply.send({ ok: true })
   })
 }

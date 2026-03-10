@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useVehiclesSse } from '../model/use-vehicles-sse'
 import { useVehiclesStore } from '../model/vehicles-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
@@ -12,11 +12,25 @@ export function LiveMap() {
   const mapRef = useRef<InstanceType<typeof window.ymaps3.YMap> | null>(null)
   const markersRef = useRef<Map<string, InstanceType<typeof window.ymaps3.YMapMarker>>>(new Map())
   const [mapsReady, setMapsReady] = useState(false)
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleWithPosition | null>(null)
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
 
   const { isLoading } = useVehiclesSse()
   const vehicles = useVehiclesStore((s) => s.vehicles)
   const currentUser = useAuthStore((s) => s.user)
+
+  const handleClosePopup = useCallback(() => {
+    setSelectedVehicleId(null)
+  }, [])
+
+  const handleFocusOnVehicle = useCallback((vehicle: VehicleWithPosition) => {
+    if (vehicle.position && mapRef.current) {
+      mapRef.current.setLocation({
+        center: [vehicle.position.lng, vehicle.position.lat],
+        zoom: 16,
+        duration: 500,
+      })
+    }
+  }, [])
 
   // Загрузка Яндекс Карт v3
   useEffect(() => {
@@ -61,23 +75,19 @@ export function LiveMap() {
     }
   }, [mapsReady])
 
-  // Обновление маркеров
+  // Обновление маркеров (полное пересоздание)
   useEffect(() => {
     if (!mapRef.current || !mapsReady) return
     const { YMapMarker } = window.ymaps3
     const map = mapRef.current
 
-    const currentIds = new Set(vehicles.map((v) => v.id))
-
-    // Удалить маркеры уехавших машин
-    for (const [id, marker] of markersRef.current) {
-      if (!currentIds.has(id)) {
-        map.removeChild(marker)
-        markersRef.current.delete(id)
-      }
+    // Удаляем все старые маркеры
+    for (const marker of markersRef.current.values()) {
+      map.removeChild(marker)
     }
+    markersRef.current.clear()
 
-    // Добавить/обновить маркеры
+    // Создаем новые маркеры с актуальным состоянием
     for (const vehicle of vehicles) {
       if (!vehicle.position) continue
 
@@ -85,19 +95,12 @@ export function LiveMap() {
       const isMyVehicle = currentUser?.vehicleId === vehicle.id
       const isActive = vehicle.isActive
 
-      if (markersRef.current.has(vehicle.id)) {
-        // Обновить позицию существующего маркера
-        const marker = markersRef.current.get(vehicle.id)!
-        marker.update({ coordinates: coords })
-      } else {
-        // Создать новый маркер
-        const el = createMarkerElement(vehicle, isMyVehicle, isActive, () =>
-          setSelectedVehicle(vehicle),
-        )
-        const marker = new YMapMarker({ coordinates: coords }, el)
-        map.addChild(marker)
-        markersRef.current.set(vehicle.id, marker)
-      }
+      const el = createMarkerElement(vehicle, isMyVehicle, isActive, () =>
+        setSelectedVehicleId(vehicle.id),
+      )
+      const marker = new YMapMarker({ coordinates: coords }, el)
+      map.addChild(marker)
+      markersRef.current.set(vehicle.id, marker)
     }
   }, [vehicles, mapsReady, currentUser])
 
@@ -116,10 +119,8 @@ export function LiveMap() {
 
   return (
     <div className="relative w-full h-full">
-      {/* Карта */}
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* Загрузка */}
       {(isLoading || !mapsReady) && (
         <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
           <div className="flex flex-col items-center gap-3">
@@ -129,25 +130,14 @@ export function LiveMap() {
         </div>
       )}
 
-      {/* Попап выбранного ТС */}
-      {selectedVehicle && (
+      {selectedVehicleId && (
         <VehiclePopup
-          vehicle={selectedVehicle}
-          isMyVehicle={currentUser?.vehicleId === selectedVehicle.id}
-          onClose={() => setSelectedVehicle(null)}
-          onFocus={() => {
-            if (selectedVehicle.position && mapRef.current) {
-              mapRef.current.setLocation({
-                center: [selectedVehicle.position.lng, selectedVehicle.position.lat],
-                zoom: 16,
-                duration: 500,
-              })
-            }
-          }}
+          vehicleId={selectedVehicleId}
+          onClose={handleClosePopup}
+          onFocus={handleFocusOnVehicle}
         />
       )}
 
-      {/* Счётчик активных машин */}
       <div className="absolute top-4 left-4 z-10">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 text-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -187,13 +177,26 @@ function createMarkerElement(
 }
 
 interface VehiclePopupProps {
-  vehicle: VehicleWithPosition
-  isMyVehicle: boolean
+  vehicleId: string
   onClose: () => void
-  onFocus: () => void
+  onFocus: (vehicle: VehicleWithPosition) => void
 }
 
-function VehiclePopup({ vehicle, isMyVehicle, onClose, onFocus }: VehiclePopupProps) {
+function VehiclePopup({ vehicleId, onClose, onFocus }: VehiclePopupProps) {
+  const vehicle = useVehiclesStore((s) => s.vehicles.find((v) => v.id === vehicleId))
+  const currentUser = useAuthStore((s) => s.user)
+
+  useEffect(() => {
+    if (!vehicle) {
+      onClose()
+    }
+  }, [vehicle, onClose])
+
+  if (!vehicle) {
+    return null
+  }
+
+  const isMyVehicle = currentUser?.vehicleId === vehicle.id
   const speedKmh = vehicle.position?.speed
     ? Math.round(vehicle.position.speed * 3.6)
     : null
@@ -227,7 +230,7 @@ function VehiclePopup({ vehicle, isMyVehicle, onClose, onFocus }: VehiclePopupPr
         </div>
 
         <button
-          onClick={onFocus}
+          onClick={() => onFocus(vehicle)}
           className="w-full py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 text-xs font-medium transition-colors"
         >
           Центрировать на карте

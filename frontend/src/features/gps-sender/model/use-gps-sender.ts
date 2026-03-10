@@ -3,6 +3,8 @@ import { WsClient } from '@/services/websocket/_ws-client'
 import { geoService } from '@/services/geolocation/_geo-service'
 import { offlineQueue } from './offline-queue'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+import { setVehicleOnline as apiSetVehicleOnline, setVehicleOffline as apiSetVehicleOffline } from '@/features/live-map/_api'
+import { useVehiclesStore } from '@/features/live-map/model/vehicles-store'
 import { bearing } from '@/shared/lib/coords'
 import type { GeoPosition } from '@/services/geolocation/_geo-service'
 
@@ -20,6 +22,12 @@ const SHIFT_STATUS_KEY = 'shiftStatus'
 
 export function useGpsSender(): UseGpsSenderResult {
   const user = useAuthStore((s) => s.user)
+  
+  // ИСПРАВЛЕНО: Запрашиваем каждую функцию отдельно. 
+  // Это стандартный и правильный паттерн для Zustand, который предотвращает бесконечные циклы рендеринга.
+  const setVehicleOnline = useVehiclesStore((s) => s.setVehicleOnline)
+  const setVehicleOffline = useVehiclesStore((s) => s.setVehicleOffline)
+
   const wsRef = useRef<WsClient | null>(null)
   const lastPositionRef = useRef<GeoPosition | null>(null)
 
@@ -115,14 +123,32 @@ export function useGpsSender(): UseGpsSenderResult {
     }
   }, [status, user])
 
-  const startShift = useCallback(() => {
-    setStatus('active')
-  }, [])
+  const startShift = useCallback(async () => {
+    if (!user?.vehicleId) return
 
-  const stopShift = useCallback(() => {
+    setStatus('active')
+    setVehicleOnline(user.vehicleId)
+
+    try {
+      await apiSetVehicleOnline(user.vehicleId)
+    } catch (err) {
+      console.error('Failed to set vehicle online', err)
+    }
+  }, [user, setVehicleOnline])
+
+  const stopShift = useCallback(async () => {
+    if (!user?.vehicleId) return
+
     setStatus('idle')
+    setVehicleOffline(user.vehicleId)
     setErrorMessage(null)
-  }, [])
+
+    try {
+      await apiSetVehicleOffline(user.vehicleId)
+    } catch (err) {
+      console.error('Failed to set vehicle offline', err)
+    }
+  }, [user, setVehicleOffline])
 
   return { status, pendingCount, errorMessage, startShift, stopShift }
 }

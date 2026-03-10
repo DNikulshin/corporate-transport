@@ -29,6 +29,7 @@ model Vehicle {
   name        String   // "Газель 001"
   plateNumber String   @unique
   isActive    Boolean  @default(false)
+  online      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

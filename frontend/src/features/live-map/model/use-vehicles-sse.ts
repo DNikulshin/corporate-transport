@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SseClient } from '@/services/sse/_sse-client'
 import { useAuthStore } from '@/features/auth/model/auth-store'
@@ -8,14 +8,16 @@ import type { VehiclePosition, VehicleWithPosition } from '@/shared/domain/vehic
 
 type SseEvent =
   | { type: 'position'; data: VehiclePosition }
+  | { type: 'vehicle_online'; vehicleId: string }
   | { type: 'vehicle_offline'; vehicleId: string }
 
 export function useVehiclesSse() {
   const accessToken = useAuthStore((s) => s.accessToken)
-  const { setVehicles, updatePosition, setVehicleOffline } = useVehiclesStore()
-  const sseRef = useRef<SseClient<SseEvent> | null>(null)
 
-  // Загрузить список машин при старте
+  // FIX: Используем `getState` для получения стабильных ссылок на функции-действия.
+  // Это предотвращает бесконечные циклы, вызванные пересозданием хука `useEffect`.
+  const { setVehicles, updatePosition, setVehicleOnline, setVehicleOffline } = useVehiclesStore.getState()
+
   const { isLoading } = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
@@ -24,29 +26,34 @@ export function useVehiclesSse() {
       return data
     },
     enabled: Boolean(accessToken),
-    staleTime: 30_000,
+
+    // FIX: Отключаем агрессивное фоновое обновление `react-query`.
+    // Это предотвращает "гонку состояний", когда данные с сервера затирали
+    // оптимистичное обновление статуса на клиенте. Теперь SSE - единственный источник правды.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 
-  // SSE подписка на позиции
   useEffect(() => {
     if (!accessToken) return
 
-    const sse = new SseClient<SseEvent>(
-      '/tracking/stream',
-      (event) => {
-        if (event.type === 'position') updatePosition(event.data)
-        else if (event.type === 'vehicle_offline') setVehicleOffline(event.vehicleId)
-      },
-    )
+    const sse = new SseClient<SseEvent>('/tracking/stream', (event) => {
+      if (event.type === 'position') {
+        updatePosition(event.data)
+      } else if (event.type === 'vehicle_online') {
+        setVehicleOnline(event.vehicleId)
+      } else if (event.type === 'vehicle_offline') {
+        setVehicleOffline(event.vehicleId)
+      }
+    })
 
-    sse.connect(accessToken)
-    sseRef.current = sse
+    sse.connect(() => useAuthStore.getState().accessToken)
 
     return () => {
       sse.disconnect()
-      sseRef.current = null
     }
-  }, [accessToken, updatePosition, setVehicleOffline])
+  }, [accessToken, setVehicles, updatePosition, setVehicleOnline, setVehicleOffline])
 
   return { isLoading }
 }

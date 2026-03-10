@@ -7,6 +7,7 @@ interface VehiclesState {
 
   setVehicles: (vehicles: VehicleWithPosition[]) => void
   updatePosition: (pos: VehiclePosition) => void
+  setVehicleOnline: (vehicleId: string) => void
   setVehicleOffline: (vehicleId: string) => void
 }
 
@@ -21,16 +22,24 @@ export const useVehiclesStore = create<VehiclesState>((set) => ({
   updatePosition: (pos) => {
     set((state) => ({
       vehicles: state.vehicles.map((v) =>
-        v.id === pos.vehicleId ? { ...v, position: pos, isActive: true } : v,
+        v.id === pos.vehicleId ? { ...v, position: pos, online: true, isActive: true } : v,
       ),
       lastUpdated: Date.now(),
+    }))
+  },
+
+  setVehicleOnline: (vehicleId) => {
+    set((state) => ({
+      vehicles: state.vehicles.map((v) =>
+        v.id === vehicleId ? { ...v, online: true, isActive: true } : v,
+      ),
     }))
   },
 
   setVehicleOffline: (vehicleId) => {
     set((state) => ({
       vehicles: state.vehicles.map((v) =>
-        v.id === vehicleId ? { ...v, isActive: false } : v,
+        v.id === vehicleId ? { ...v, online: false, isActive: false } : v,
       ),
     }))
   },
