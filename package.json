@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@pbe/react-yandex-maps": "^1.2.5"
+  }
+}

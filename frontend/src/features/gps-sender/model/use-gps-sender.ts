@@ -16,56 +16,70 @@ interface UseGpsSenderResult {
   stopShift: () => void
 }
 
+const SHIFT_STATUS_KEY = 'shiftStatus'
+
 export function useGpsSender(): UseGpsSenderResult {
   const user = useAuthStore((s) => s.user)
-  const accessToken = useAuthStore((s) => s.accessToken)
   const wsRef = useRef<WsClient | null>(null)
   const lastPositionRef = useRef<GeoPosition | null>(null)
 
-  const [status, setStatus] = useState<ShiftStatus>('idle')
+  const [status, setStatus] = useState<ShiftStatus>(
+    () => (localStorage.getItem(SHIFT_STATUS_KEY) as ShiftStatus) || 'idle',
+  )
   const [pendingCount, setPendingCount] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Flush очереди при подключении WS
-  const flushQueue = useCallback(async (ws: WsClient) => {
-    const pending = await offlineQueue.getPending()
-    if (pending.length === 0) return
+  useEffect(() => {
+    localStorage.setItem(SHIFT_STATUS_KEY, status)
+  }, [status])
 
-    const sent: number[] = []
-    for (const pos of pending) {
-      const ok = ws.send({ type: 'position', data: pos })
-      if (ok) sent.push(pos.timestamp)
-      else break
-    }
-
-    if (sent.length > 0) {
-      await offlineQueue.markSynced(sent)
-      await offlineQueue.clearSynced()
-      setPendingCount(await offlineQueue.count())
-    }
+  useEffect(() => {
+    offlineQueue.count().then(setPendingCount)
   }, [])
 
-  const startShift = useCallback(() => {
-    if (!user?.vehicleId || !accessToken) {
+  useEffect(() => {
+    if (status !== 'active') {
+      wsRef.current?.disconnect()
+      wsRef.current = null
+      return
+    }
+
+    if (!user?.vehicleId) {
+      setStatus('error')
       setErrorMessage('Нет привязанного транспортного средства')
       return
     }
 
-    setStatus('active')
     setErrorMessage(null)
 
     const ws = new WsClient('/api/tracking/ws')
     wsRef.current = ws
 
-    ws.on('open', () => flushQueue(ws))
+    const flushQueue = async () => {
+      const pending = await offlineQueue.getPending()
+      if (pending.length === 0) return
 
-    ws.connect(accessToken)
+      const sent: number[] = []
+      for (const pos of pending) {
+        const ok = ws.send({ type: 'position', data: pos })
+        if (ok) sent.push(pos.timestamp)
+        else break
+      }
+
+      if (sent.length > 0) {
+        await offlineQueue.markSynced(sent)
+        await offlineQueue.clearSynced()
+        setPendingCount(await offlineQueue.count())
+      }
+    }
+
+    ws.on('open', flushQueue)
+
+    ws.connect(() => useAuthStore.getState().accessToken)
 
     geoService.watch(
       async (pos) => {
-        const heading = lastPositionRef.current
-          ? bearing(lastPositionRef.current, pos)
-          : pos.heading ?? 0
+        const heading = lastPositionRef.current ? bearing(lastPositionRef.current, pos) : pos.heading ?? 0
         lastPositionRef.current = pos
 
         const payload = {
@@ -78,9 +92,7 @@ export function useGpsSender(): UseGpsSenderResult {
           timestamp: pos.timestamp,
         }
 
-        const sent = ws.send({ type: 'position', data: payload })
-        if (!sent) {
-          // WS недоступен — сохранить в очередь
+        if (!ws.send({ type: 'position', data: payload })) {
           await offlineQueue.enqueue(payload)
           setPendingCount(await offlineQueue.count())
         }
@@ -94,23 +106,22 @@ export function useGpsSender(): UseGpsSenderResult {
         )
       },
     )
-  }, [user, accessToken, flushQueue])
 
-  const stopShift = useCallback(() => {
-    geoService.stop()
-    wsRef.current?.disconnect()
-    wsRef.current = null
-    lastPositionRef.current = null
-    setStatus('idle')
-    setErrorMessage(null)
-  }, [])
-
-  // Cleanup при размонтировании
-  useEffect(() => {
     return () => {
       geoService.stop()
-      wsRef.current?.disconnect()
+      ws.disconnect()
+      wsRef.current = null
+      lastPositionRef.current = null
     }
+  }, [status, user])
+
+  const startShift = useCallback(() => {
+    setStatus('active')
+  }, [])
+
+  const stopShift = useCallback(() => {
+    setStatus('idle')
+    setErrorMessage(null)
   }, [])
 
   return { status, pendingCount, errorMessage, startShift, stopShift }

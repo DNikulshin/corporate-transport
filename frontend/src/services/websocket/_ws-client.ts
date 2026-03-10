@@ -15,22 +15,33 @@ export class WsClient {
   private shouldReconnect = false
   private reconnectDelay = 2000
   private path: string
+  private tokenProvider: (() => string | null | undefined) | null = null
 
   constructor(path: string) {
     this.path = path
   }
 
-  connect(token: string): void {
+  connect(tokenProvider: () => string | null | undefined): void {
     this.shouldReconnect = true
-    this._connect(token)
+    this.tokenProvider = tokenProvider
+    this._connect()
     this._startHeartbeat()
   }
 
-  private _connect(token: string): void {
-    // Определяем протокол WebSocket (wss для https, ws для http)
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Собираем URL, используя хост текущей страницы. Это гарантирует, что мы всегда
-    // обращаемся к прокси-серверу Vite, который и перенаправит запрос на бэкенд.
+  private _connect(): void {
+    if (!this.tokenProvider) {
+      return
+    }
+
+    const token = this.tokenProvider()
+    if (!token) {
+      if (this.shouldReconnect) {
+        this.reconnectTimer = setTimeout(() => this._connect(), this.reconnectDelay)
+      }
+      return
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${window.location.host}${this.path}?token=${encodeURIComponent(token)}`
 
     this.ws = new WebSocket(url)
@@ -45,7 +56,7 @@ export class WsClient {
       if (this.shouldReconnect) {
         this.reconnectTimer = setTimeout(() => {
           this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, 30_000)
-          this._connect(token)
+          this._connect()
         }, this.reconnectDelay)
       }
     }
@@ -72,6 +83,7 @@ export class WsClient {
 
   disconnect(): void {
     this.shouldReconnect = false
+    this.tokenProvider = null
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this._stopHeartbeat()
     this.ws?.close()
@@ -97,7 +109,9 @@ export class WsClient {
 
   private _startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
-      this.send({ type: 'ping' })
+      if (this.isConnected) {
+        this.send({ type: 'ping' })
+      }
     }, 25_000)
   }
 

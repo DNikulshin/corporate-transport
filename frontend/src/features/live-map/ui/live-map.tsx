@@ -170,40 +170,13 @@ function createMarkerElement(
   el.className = 'cursor-pointer'
 
   el.innerHTML = `
-    <div style="
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    ">
-      <div style="
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: ${isMyVehicle ? '#0ea5e9' : isActive ? '#10b981' : '#64748b'};
-        border: 2.5px solid ${isMyVehicle ? '#38bdf8' : isActive ? '#34d399' : '#94a3b8'};
-        box-shadow: 0 0 ${isActive ? '12px' : '4px'} ${isMyVehicle ? '#0ea5e980' : isActive ? '#10b98150' : 'transparent'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-      ">
+    <div style="\n      position: relative;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      gap: 4px;\n    ">
+      <div style="\n        width: 36px;\n        height: 36px;\n        border-radius: 50%;\n        background: ${isMyVehicle ? '#0ea5e9' : isActive ? '#10b981' : '#64748b'};\n        border: 2.5px solid ${isMyVehicle ? '#38bdf8' : isActive ? '#34d399' : '#94a3b8'};\n        box-shadow: 0 0 ${isActive ? '12px' : '4px'} ${isMyVehicle ? '#0ea5e980' : isActive ? '#10b98150' : 'transparent'};\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: all 0.3s ease;\n      ">
         <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
           <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
         </svg>
       </div>
-      <div style="
-        background: rgba(15,23,42,0.9);
-        border: 1px solid rgba(148,163,184,0.2);
-        border-radius: 6px;
-        padding: 2px 6px;
-        font-size: 10px;
-        font-weight: 600;
-        color: ${isMyVehicle ? '#38bdf8' : '#e2e8f0'};
-        white-space: nowrap;
-        backdrop-filter: blur(4px);
-      ">
+      <div style="\n        background: rgba(15,23,42,0.9);\n        border: 1px solid rgba(148,163,184,0.2);\n        border-radius: 6px;\n        padding: 2px 6px;\n        font-size: 10px;\n        font-weight: 600;\n        color: ${isMyVehicle ? '#38bdf8' : '#e2e8f0'};\n        white-space: nowrap;\n        backdrop-filter: blur(4px);\n      ">
         ${vehicle.plateNumber}
       </div>
     </div>

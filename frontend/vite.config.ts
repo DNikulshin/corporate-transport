@@ -11,8 +11,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       devOptions: {
-        enabled: true, // КЛЮЧЕВОЙ ФЛАГ: включает PWA в режиме разработки
-        type: 'module', // Vite использует ESM
+        enabled: true,
+        type: 'module',
       },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
@@ -43,7 +43,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            // Яндекс карты тайлы
             urlPattern: /^https:\/\/.*\.maps\.yandex\.net\/.*/i,
             handler: 'CacheFirst',
             options: {
@@ -55,7 +54,6 @@ export default defineConfig({
             },
           },
           {
-            // API запросы
             urlPattern: /^\/api\//, 
             handler: 'NetworkFirst',
             options: {
@@ -80,18 +78,11 @@ export default defineConfig({
     allowedHosts: true,
     host: '0.0.0.0',
     proxy: {
+      // Прокси для всех запросов к API, включая WebSocket
       '/api': {
         target: 'http://localhost:4000', 
-        // secure: false,
         changeOrigin: true,
-        // rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/ws': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
-        // secure: false,
-        ws: true,
-        rewrite: () => '/api/tracking/ws',
+        ws: true, // Включаем проксирование WebSocket
       },
     },
   },
