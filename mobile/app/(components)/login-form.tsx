@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuthStore } from "../store/auth-store";
-import { authApi } from "../api/auth";
+import { authApi } from "../(api)/auth";
 
 export function LoginForm() {
   const [username, setUsername] = useState("");

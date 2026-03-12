@@ -1,18 +1,15 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { initializeAuth } from "./store/auth-store";
-import YaMap from "react-native-yamap";
+// import YaMap from "react-native-yamap";
+
+// Ключ для карт внедряется нативно через плагин, поэтому инициализация в JS не требуется.
+// YaMap.init() был удален, чтобы избежать ошибок и дублирования.
 
 export default function RootLayout() {
   useEffect(() => {
     // Initialize auth state from secure storage
     initializeAuth();
-
-    // Initialize Yandex Maps
-    const apiKey = process.env.EXPO_PUBLIC_YANDEX_MAPS_API_KEY;
-    if (apiKey) {
-      YaMap.init(apiKey);
-    }
   }, []);
 
   return (

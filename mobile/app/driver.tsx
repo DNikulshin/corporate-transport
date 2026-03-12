@@ -1,8 +1,8 @@
 import React from "react";
 import { View, StyleSheet, SafeAreaView } from "react-native";
 import { useAuthStore } from "./store/auth-store";
-import { ShiftControls } from "./components/shift-controls";
-import { MapScreen } from "./components/map-screen";
+import { ShiftControls } from "./(components)/shift-controls";
+import { MapScreen } from "./(components)/map-screen";
 
 export default function DriverScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);

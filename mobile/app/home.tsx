@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { useAuthStore } from "./store/auth-store";
-import { LoginForm } from "./components/login-form";
+import { LoginForm } from "./(components)/login-form";
 
 export default function Index() {
   const router = useRouter();

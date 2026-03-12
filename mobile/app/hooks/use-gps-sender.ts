@@ -1,99 +1,105 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import * as Location from "expo-location";
-import { WsClient } from "../lib/websocket-client";
-import { useAuthStore } from "../store/auth-store";
-import { env } from "../config/env";
+import { useEffect, useState, useCallback } from 'react';
+import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
+import { useAuthStore } from '../store/auth-store';
+import { LOCATION_TASK_NAME } from '../tasks/location-task'; // Импортируем нашу задачу
 
-export type ShiftStatus = "idle" | "active" | "error";
+// Убедимся, что TaskManager знает о нашей задаче.
+// Этот импорт должен быть выполнен где-то в корне приложения, но для простоты разместим здесь.
+import '../tasks/location-task';
+
+export type ShiftStatus = 'idle' | 'active' | 'error';
 
 interface UseGpsSenderResult {
   status: ShiftStatus;
   errorMessage: string | null;
-  startShift: () => void;
-  stopShift: () => void;
+  startShift: () => Promise<void>;
+  stopShift: () => Promise<void>;
 }
 
 export function useGpsSender(): UseGpsSenderResult {
   const user = useAuthStore((s) => s.user);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const wsRef = useRef<WsClient | null>(null);
-  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
-    null
-  );
-
-  const [status, setStatus] = useState<ShiftStatus>("idle");
+  const [status, setStatus] = useState<ShiftStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const startShift = useCallback(() => {
-    if (!user?.vehicleId || !accessToken) {
-      setErrorMessage("Нет привязанного транспортного средства");
+  // Проверяем, активна ли задача, при монтировании компонента
+  useEffect(() => {
+    const checkTaskStatus = async () => {
+      const isActive = await TaskManager.isTaskRegisteredAsync(
+        LOCATION_TASK_NAME
+      );
+      if (isActive) {
+        setStatus('active');
+      }
+    };
+    checkTaskStatus();
+  }, []);
+
+  const startShift = useCallback(async () => {
+    if (!user?.vehicleId) {
+      setErrorMessage('Нет привязанного транспортного средства');
+      setStatus('error');
       return;
     }
 
-    setStatus("active");
-    setErrorMessage(null);
+    // 1. Запрашиваем разрешения для фона
+    const { status: foregroundStatus } =
+      await Location.requestForegroundPermissionsAsync();
+    if (foregroundStatus !== 'granted') {
+      setErrorMessage('Разрешение на геолокацию (foreground) не получено');
+      setStatus('error');
+      return;
+    }
 
-    const ws = new WsClient("/api/tracking/ws");
-    wsRef.current = ws;
+    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (backgroundStatus !== 'granted') {
+        setErrorMessage('Разрешение на геолокацию (background) не получено');
+        setStatus('error');
+        return;
+    }
 
-    ws.connect(accessToken);
+    try {
+      // 2. Запускаем фоновую задачу
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000, // 5 секунд
+        distanceInterval: 10, // 10 метров
+        showsBackgroundLocationIndicator: true, // Показываем индикатор в строке состояния
+        foregroundService: {
+          notificationTitle: 'Отслеживание активно',
+          notificationBody: 'Приложение отправляет ваши координаты на сервер.',
+          notificationColor: '#333333',
+        },
+      });
 
-    // Request location permissions
-    (async () => {
-      try {
-        const { status: locStatus } =
-          await Location.requestForegroundPermissionsAsync();
-        if (locStatus !== "granted") {
-          setErrorMessage("Разрешение на геолокацию не получено");
-          setStatus("error");
-          return;
-        }
+      const isRunning = await Location.hasStartedLocationUpdatesAsync(
+        LOCATION_TASK_NAME
+      );
 
-        // Watch position
-        locationSubscriptionRef.current = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            timeInterval: env.gpsIntervalMs,
-            distanceInterval: 5, // Update every 5 meters
-          },
-          (location) => {
-            const payload = {
-              vehicleId: user.vehicleId!,
-              lat: location.coords.latitude,
-              lng: location.coords.longitude,
-              heading: location.coords.heading ?? 0,
-              speed: location.coords.speed
-                ? Math.round(location.coords.speed * 3.6)
-                : 0,
-              accuracy: location.coords.accuracy,
-              timestamp: Date.now(),
-            };
-
-            ws.send({ type: "position", data: payload });
-          }
-        );
-      } catch {
-        setErrorMessage("Ошибка определения местоположения");
-        setStatus("error");
+      if(isRunning) {
+        setStatus('active');
+        setErrorMessage(null);
+      } else {
+        throw new Error("Не удалось запустить фоновую задачу")
       }
-    })();
-  }, [user, accessToken]);
 
-  const stopShift = useCallback(() => {
-    locationSubscriptionRef.current?.remove();
-    locationSubscriptionRef.current = null;
-    wsRef.current?.disconnect();
-    wsRef.current = null;
-    setStatus("idle");
-    setErrorMessage(null);
-  }, []);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('Ошибка запуска фонового отслеживания');
+      setStatus('error');
+    }
+  }, [user]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      locationSubscriptionRef.current?.remove();
-      wsRef.current?.disconnect();
-    };
+  const stopShift = useCallback(async () => {
+    try {
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      setStatus('idle');
+      setErrorMessage(null);
+    } catch (error) {
+        console.error(error)
+        setErrorMessage("Ошибка остановки фонового отслеживания")
+        setStatus('error');
+    }
   }, []);
 
   return { status, errorMessage, startShift, stopShift };

@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   StyleSheet,
   ActivityIndicator,
   Text,
-  ScrollView,
 } from "react-native";
+// ИСПРАВЛЕНИЕ: Убираем импорт несуществующего типа YaMapRef
 import YaMap, { Marker } from "react-native-yamap";
 import { useVehiclesStore } from "../store/vehicles-store";
-import { vehiclesApi } from "../api/vehicles";
+import { vehiclesApi } from "../(api)/vehicles";
 import type { Vehicle } from "../types/vehicle";
 
 interface MapScreenProps {
@@ -19,6 +19,8 @@ export function MapScreen({ token }: MapScreenProps) {
   const { vehicles, setVehicles } = useVehiclesStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // ИСПРАВЛЕНИЕ: Используем тип YaMap для ref
+  const mapRef = useRef<YaMap>(null);
 
   // Load initial vehicles data
   useEffect(() => {
@@ -36,7 +38,17 @@ export function MapScreen({ token }: MapScreenProps) {
     };
 
     loadVehicles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setVehicles]);
+
+  // Улучшение: Центрируем карту на маркерах после первой загрузки
+  useEffect(() => {
+    if (!isLoading && vehicles.length > 0) {
+      setTimeout(() => {
+        mapRef.current?.fitAllMarkers();
+      }, 500); // Небольшая задержка, чтобы карта успела инициализироваться
+    }
+  }, [isLoading, vehicles]);
+
 
   // Polling for updates every 5 seconds
   useEffect(() => {
@@ -50,7 +62,7 @@ export function MapScreen({ token }: MapScreenProps) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setVehicles]);
 
   if (isLoading) {
     return (
@@ -72,8 +84,9 @@ export function MapScreen({ token }: MapScreenProps) {
   return (
     <View style={styles.container}>
       <YaMap
+        ref={mapRef} // Привязываем ref
         initialRegion={{
-          lat: 55.755864,
+          lat: 55.755864, // Начальный регион остается, но будет переопределен
           lon: 37.617698,
           zoom: 10,
         }}
