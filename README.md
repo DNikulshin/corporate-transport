@@ -3,6 +3,8 @@
 > PWA-приложение для отслеживания корпоративного транспорта в реальном времени.
 > Водители транслируют GPS со своих телефонов — сотрудники видят все машины на карте.
 
+![CI](https://github.com/DNikulshin/corporate-transport/actions/workflows/ci.yml/badge.svg)
+
 ---
 
 ## Содержание
@@ -194,120 +196,40 @@ corporate-transport/
 
 ### Шаг 1 — Инфраструктура (PostgreSQL + Redis)
 
-В корне проекта (где лежит `docker-compose.yml`):
-
 ```bash
 docker compose up -d
-```
-
-Проверить что запустилось:
-
-```bash
 docker compose ps
-# Оба контейнера должны быть в статусе "running"
 ```
 
 Что поднимается:
-- **PostgreSQL 16** → `localhost:5432` (user: `postgres`, password: `postgres`, db: `corporate_transport`)
+- **PostgreSQL 16** → `localhost:5432`
 - **Redis 7** → `localhost:6379`
-
----
 
 ### Шаг 2 — Backend
 
 ```bash
 cd backend
-```
-
-**2.1 Установить зависимости:**
-
-```bash
 npm install
-```
-
-**2.2 Настроить переменные окружения:**
-
-```bash
 cp .env.example .env
-```
-
-Содержимое `.env` (для локальной разработки ничего менять не нужно):
-
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/corporate_transport"
-REDIS_URL="redis://localhost:6379"
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-PORT=4000
-FRONTEND_URL="http://localhost:3000"
-```
-
-**2.3 Применить миграции базы данных:**
-
-```bash
 npx prisma generate
 npx prisma migrate dev --name init
-```
-
-При вопросе `Do you want to create the database?` → нажмите `y`.
-
-**2.4 Заполнить тестовыми данными:**
-
-```bash
 npm run db:seed
-```
-
-**2.5 Запустить сервер:**
-
-```bash
 npm run dev
 ```
 
-Сервер запустится на `http://localhost:4000`.
-
-Проверить:
-```bash
-curl http://localhost:4000/health
-# {"status":"ok","timestamp":"..."}
-```
-
----
+Проверить: `curl http://localhost:4000/health` → `{"status":"ok"}`
 
 ### Шаг 3 — Frontend
 
-Откройте новый терминал:
-
 ```bash
 cd frontend
-```
-
-**3.1 Установить зависимости:**
-
-```bash
 npm install
-```
-
-**3.2 Настроить переменные окружения:**
-
-```bash
 cp .env.example .env
-```
-
-Откройте `.env` и **обязательно** добавьте API ключ Яндекс Карт:
-
-```env
-VITE_API_URL=http://localhost:4000
-VITE_WS_URL=ws://localhost:4000
-VITE_YANDEX_MAPS_API_KEY=ВАШ_КЛЮЧ_ЗДЕСЬ
-VITE_GPS_INTERVAL_MS=4000
-```
-
-**3.3 Запустить dev-сервер:**
-
-```bash
+# Добавить VITE_YANDEX_MAPS_API_KEY в .env
 npm run dev
 ```
 
-Откройте в браузере: **http://localhost:3000**
+Открыть: **http://localhost:3000**
 
 ---
 
@@ -315,51 +237,45 @@ npm run dev
 
 ### Backend (`backend/.env`)
 
-| Переменная        | По умолчанию                                                     | Описание                            |
-|-------------------|------------------------------------------------------------------|-------------------------------------|
-| `DATABASE_URL`    | `postgresql://postgres:postgres@localhost:5432/corporate_transport` | Строка подключения к PostgreSQL  |
-| `REDIS_URL`       | `redis://localhost:6379`                                         | Строка подключения к Redis          |
-| `JWT_SECRET`      | `change-me-in-production-please`                                 | Секрет для подписи JWT токенов      |
-| `PORT`            | `4000`                                                           | Порт HTTP/WebSocket сервера         |
-| `FRONTEND_URL`    | `http://localhost:3000`                                          | URL фронтенда (настройка CORS)      |
+| Переменная     | По умолчанию                                                        | Описание                       |
+|----------------|---------------------------------------------------------------------|--------------------------------|
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/corporate_transport` | Строка подключения к PostgreSQL|
+| `REDIS_URL`    | `redis://localhost:6379`                                            | Строка подключения к Redis     |
+| `JWT_SECRET`   | `change-me-in-production-please`                                    | Секрет для подписи JWT токенов |
+| `PORT`         | `4000`                                                              | Порт HTTP/WebSocket сервера    |
+| `FRONTEND_URL` | `http://localhost:3000`                                             | URL фронтенда (CORS)           |
 
 ### Frontend (`frontend/.env`)
 
-| Переменная                  | По умолчанию            | Описание                          |
-|-----------------------------|-------------------------|-----------------------------------|
-| `VITE_API_URL`              | `http://localhost:4000` | URL backend REST API              |
-| `VITE_WS_URL`               | `ws://localhost:4000`   | URL WebSocket сервера             |
-| `VITE_YANDEX_MAPS_API_KEY`  | *(обязательно)*         | API ключ Яндекс Карт              |
-| `VITE_GPS_INTERVAL_MS`      | `4000`                  | Интервал отправки GPS в мс        |
+| Переменная                 | По умолчанию            | Описание                   |
+|----------------------------|-------------------------|----------------------------|
+| `VITE_API_URL`             | `http://localhost:4000` | URL backend REST API       |
+| `VITE_WS_URL`              | `ws://localhost:4000`   | URL WebSocket сервера      |
+| `VITE_YANDEX_MAPS_API_KEY` | *(обязательно)*         | API ключ Яндекс Карт       |
+| `VITE_GPS_INTERVAL_MS`     | `4000`                  | Интервал отправки GPS в мс |
 
 ---
 
 ## Тестовые аккаунты
 
-| Логин       | Пароль      | Роль      | Машина                         |
-|-------------|-------------|-----------|--------------------------------|
-| `driver1`   | `password123` | Водитель | Газель 001 (А001АА77)          |
-| `driver2`   | `password123` | Водитель | Ford Transit 002 (В002ВВ77)    |
-| `employee1` | `password123` | Сотрудник | —                             |
+| Логин       | Пароль        | Роль      | Машина                      |
+|-------------|---------------|-----------|-----------------------------|
+| `driver1`   | `password123` | Водитель  | Газель 001 (А001АА77)       |
+| `driver2`   | `password123` | Водитель  | Ford Transit 002 (В002ВВ77) |
+| `employee1` | `password123` | Сотрудник | —                           |
 
 **Сценарий тестирования:**
-
-1. Откройте **два окна браузера** (или два устройства в одной сети)
-2. Окно 1: войдите как `driver1` → нажмите **«Начать смену»** → разрешите геолокацию
-3. Окно 2: войдите как `employee1` → увидите маркер машины на карте, обновляющийся в реальном времени
+1. Окно 1: войти как `driver1` → «Начать смену» → разрешить геолокацию
+2. Окно 2: войти как `employee1` → видеть маркер машины в реальном времени
 
 ---
 
 ## API ключ Яндекс Карт
 
-1. Перейдите: [developer.tech.yandex.ru](https://developer.tech.yandex.ru)
-2. Войдите с аккаунтом Яндекс (или зарегистрируйтесь)
-3. Нажмите **«Подключить API»**
-4. Выберите **«JavaScript API и HTTP Геокодер»**
-5. Заполните форму: название проекта, в поле «Разрешённые домены» укажите `localhost`
-6. Скопируйте выданный ключ и вставьте в `frontend/.env`
-
-> **Бесплатный лимит:** 1000 загрузок карты в сутки — достаточно для разработки и небольшой команды.
+1. [developer.tech.yandex.ru](https://developer.tech.yandex.ru) → «Подключить API»
+2. Выбрать **«JavaScript API и HTTP Геокодер»**
+3. В разрешённых доменах указать `localhost`
+4. Скопировать ключ в `frontend/.env`
 
 ---
 
@@ -404,72 +320,43 @@ npm run dev
 
 ## Оффлайн-режим PWA
 
-| Ресурс                     | Стратегия кэша    | Срок хранения |
-|----------------------------|-------------------|---------------|
-| JS, CSS, HTML приложения   | `CacheFirst`      | До следующего деплоя |
-| Тайлы Яндекс Карт          | `CacheFirst`      | 7 дней        |
-| REST API запросы           | `NetworkFirst`    | 5 минут       |
-| GPS-точки при отсутствии сети | IndexedDB      | До отправки   |
-
-**Установить PWA на телефон:**
-
-- **iOS Safari:** Поделиться → «На экран "Домой"»
-- **Android Chrome:** ⋮ → «Добавить на главный экран»
-
-После установки приложение запускается как нативное, без строки браузера.
+| Ресурс                        | Стратегия кэша | Срок хранения        |
+|-------------------------------|----------------|----------------------|
+| JS, CSS, HTML приложения      | `CacheFirst`   | До следующего деплоя |
+| Тайлы Яндекс Карт             | `CacheFirst`   | 7 дней               |
+| REST API запросы              | `NetworkFirst` | 5 минут              |
+| GPS-точки при отсутствии сети | IndexedDB      | До отправки          |
 
 ---
 
 ## Деплой в продакшн
 
-### Сборка
+### Вариант 1 — Render (backend) + Vercel/GitHub Pages (frontend)
 
+**Backend на Render:**
+- Build command: `npm install && npx prisma generate && npm run build`
+- Start command: `node dist/app.js`
+- Environment Variables: добавить все переменные из таблицы выше
+
+**Frontend на GitHub Pages / Vercel:**
 ```bash
-# Frontend
 cd frontend && npm run build
-# Результат: frontend/dist/ — загрузить на CDN/nginx
-
-# Backend
-cd backend && npm run build
-# Результат: backend/dist/
-node dist/app.js
+# Загрузить dist/ на Vercel или GitHub Pages
 ```
 
-### Переменные окружения (продакшн)
-
-**Backend:**
-```env
-DATABASE_URL="postgresql://user:pass@prod-db:5432/corporate_transport"
-REDIS_URL="redis://prod-redis:6379"
-JWT_SECRET="минимум-64-символа-случайной-строки-сгенерируйте-openssl-rand-hex-32"
-PORT=4000
-FRONTEND_URL="https://transport.your-company.com"
-```
-
-**Frontend:**
-```env
-VITE_API_URL=https://api.your-company.com
-VITE_WS_URL=wss://api.your-company.com
-VITE_YANDEX_MAPS_API_KEY=production-api-key
-```
-
-> ⚠️ В продакшне WebSocket и SSE должны работать через HTTPS/WSS.
-
-### Пример конфига nginx
+### Вариант 2 — Nginx (self-hosted)
 
 ```nginx
 server {
     listen 443 ssl http2;
     server_name api.your-company.com;
 
-    # REST API
     location /api/ {
         proxy_pass http://localhost:4000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # WebSocket (водитель → сервер)
     location /ws {
         proxy_pass http://localhost:4000;
         proxy_http_version 1.1;
@@ -478,7 +365,7 @@ server {
         proxy_read_timeout 3600s;
     }
 
-    # SSE (сервер → клиенты) — ВАЖНО: отключить буферизацию!
+    # SSE — обязательно отключить буферизацию
     location /api/tracking/stream {
         proxy_pass http://localhost:4000;
         proxy_buffering off;
@@ -486,11 +373,20 @@ server {
         proxy_read_timeout 86400s;
         proxy_set_header Connection '';
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
         add_header Cache-Control no-cache;
         add_header X-Accel-Buffering no;
     }
 }
+```
+
+### Переменные окружения (продакшн)
+
+```env
+DATABASE_URL="postgresql://user:pass@prod-db:5432/corporate_transport"
+REDIS_URL="redis://prod-redis:6379"
+JWT_SECRET="минимум-64-символа-сгенерируйте-через-openssl-rand-hex-32"
+PORT=4000
+FRONTEND_URL="https://transport.your-company.com"
 ```
 
 ---
@@ -498,22 +394,22 @@ server {
 ## FAQ
 
 **Карта не загружается**
-> Проверьте `VITE_YANDEX_MAPS_API_KEY` в `.env`. Убедитесь что `localhost` добавлен в разрешённые домены ключа.
+> Проверьте `VITE_YANDEX_MAPS_API_KEY`. Убедитесь что `localhost` добавлен в разрешённые домены ключа.
 
 **Браузер не запрашивает доступ к геолокации**
-> Геолокация работает только на `localhost` или по HTTPS. В продакшне обязателен SSL-сертификат.
+> Геолокация работает только на `localhost` или по HTTPS.
 
 **Маркер машины не появляется**
-> Проверьте в DevTools → Network: 1) WS соединение открыто (вкладка WS), 2) SSE соединение открыто (вкладка EventStream). Убедитесь что Redis запущен.
+> DevTools → Network: проверить WS и SSE соединения. Убедиться что Redis запущен.
 
-**Как добавить новую машину или водителя?**
-> Через Prisma Studio: `cd backend && npx prisma studio`. Откроется веб-интерфейс на `localhost:5555`.
+**Как добавить нового водителя или машину?**
+> `cd backend && npx prisma studio` → веб-интерфейс на `localhost:5555`.
 
 **Как изменить частоту обновления GPS?**
-> `VITE_GPS_INTERVAL_MS` в frontend `.env`. Рекомендуется 3000–10000 мс. Меньше = точнее, но больше трафик и расход батареи.
+> `VITE_GPS_INTERVAL_MS` в `frontend/.env`. Рекомендуется 3000–10000 мс.
 
 **Водитель уехал в зону без сети — что происходит?**
-> GPS-точки накапливаются в IndexedDB телефона. При восстановлении сети автоматически отправляются пакетом на сервер в хронологическом порядке.
+> GPS-точки накапливаются в IndexedDB. При восстановлении сети отправляются пакетом в хронологическом порядке.
 
 **Сколько водителей поддерживает система?**
-> Redis Pub/Sub практически без ограничений. Узкое место — количество одновременных SSE-соединений (каждый клиент держит один поток). Fastify + Node.js легко справляется с тысячами клиентов.
+> Redis Pub/Sub практически без ограничений. Fastify + Node.js легко справляется с тысячами SSE-клиентов.
