@@ -1,0 +1,3 @@
+frontend/dev-dist/** linguist-generated=true
+*.lock linguist-generated=true
+*-lock.json linguist-generated=true
