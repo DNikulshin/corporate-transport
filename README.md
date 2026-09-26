@@ -26,6 +26,15 @@
 
 ## Архитектура
 
+```mermaid
+flowchart TD
+    Client[React PWA Admin] <-->|WebSocket & REST| Gateway[Node.js Gateway / NestJS]
+    Driver[React Native Expo Driver] -->|GPS Coordinates| Gateway
+    Gateway <--> Redis[(Redis Pub/Sub & Geo Spatial)]
+    Gateway --> Postgres[(PostgreSQL / Prisma TimeSeries)]
+    Client -.-> IndexedDB[(Offline Queue IndexedDB)]
+```
+
 ```
 ┌──────────────────────────────────────┐
 │         ТЕЛЕФОН ВОДИТЕЛЯ (PWA)        │
