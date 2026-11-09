@@ -171,3 +171,34 @@ index 8b05905..b424674 100644
                  }
              }
  
+diff --git a/node_modules/react-native-yamap/android/src/main/java/ru/vvdev/yamap/view/YamapView.kt b/node_modules/react-native-yamap/android/src/main/java/ru/vvdev/yamap/view/YamapView.kt
+index 48c1cdf..5c28597 100644
+--- a/node_modules/react-native-yamap/android/src/main/java/ru/vvdev/yamap/view/YamapView.kt
++++ b/node_modules/react-native-yamap/android/src/main/java/ru/vvdev/yamap/view/YamapView.kt
+@@ -225,7 +225,7 @@ open class YamapView(context: Context?) : MapView(context), UserLocationObjectLi
+         val screenPoints = Arguments.createArray()
+ 
+         for (i in 0 until worldPoints.size()) {
+-            val p = worldPoints.getMap(i)
++            val p = worldPoints.getMap(i)!!
+             val worldPoint = Point(p.getDouble("lat"), p.getDouble("lon"))
+             val screenPoint = mapWindow.worldToScreen(worldPoint)
+             screenPoints.pushMap(screenPointToJSON(screenPoint))
+@@ -244,7 +244,7 @@ open class YamapView(context: Context?) : MapView(context), UserLocationObjectLi
+         val worldPoints = Arguments.createArray()
+ 
+         for (i in 0 until screenPoints.size()) {
+-            val p = screenPoints.getMap(i)
++            val p = screenPoints.getMap(i)!!
+             val screenPoint = ScreenPoint(p.getDouble("x").toFloat(), p.getDouble("y").toFloat())
+             val worldPoint = mapWindow.screenToWorld(screenPoint)
+             worldPoints.pushMap(worldPointToJSON(worldPoint))
+@@ -685,7 +685,7 @@ open class YamapView(context: Context?) : MapView(context), UserLocationObjectLi
+         val wTransports = Arguments.createMap()
+ 
+         for ((key, value) in transports) {
+-            wTransports.putArray(key, Arguments.fromList(value))
++            wTransports.putArray(key, Arguments.fromList(value ?: emptyList<String?>()))
+         }
+ 
+         routeMetadata.putMap("transports", wTransports)
