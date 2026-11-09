@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../db/client.js'
 import { getRedis, REDIS_CHANNELS, REDIS_KEYS } from '../../services/redis.js'
 
-const prisma = new PrismaClient()
 
 export async function vehiclesRoutes(app: FastifyInstance) {
   // GET /api/vehicles — список всех машин с последней позицией из Redis

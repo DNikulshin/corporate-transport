@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../db/client.js'
 import {
   getRedis,
   getRedisSubscriber,
@@ -7,7 +7,6 @@ import {
   REDIS_CHANNELS,
 } from '../../services/redis.js'
 
-const prisma = new PrismaClient()
 
 interface PositionPayload {
   vehicleId: string

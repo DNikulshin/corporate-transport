@@ -1,9 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../db/client.js'
 import { z } from 'zod'
 
-const prisma = new PrismaClient()
 
 const LoginSchema = z.object({
   username: z.string().min(1),
