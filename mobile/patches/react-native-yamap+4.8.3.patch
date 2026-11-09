@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-yamap/android/build.gradle b/node_modules/react-native-yamap/android/build.gradle
+index d9de295..9541e4c 100644
+--- a/node_modules/react-native-yamap/android/build.gradle
++++ b/node_modules/react-native-yamap/android/build.gradle
+@@ -1,7 +1,6 @@
+ 
+ buildscript {
+     repositories {
+-        jcenter()
+         mavenCentral()
+     }
+ }
