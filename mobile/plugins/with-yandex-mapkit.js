@@ -1,23 +1,28 @@
-const { AndroidConfig, createRunOncePlugin } = require("@expo/config-plugins");
+const {
+  AndroidConfig,
+  createRunOncePlugin,
+  withAndroidManifest,
+} = require("@expo/config-plugins");
 
 /**
  * Expo config plugin for react-native-yamap
- * Adds Yandex MapKit API key to Android manifest
+ * Adds Yandex MapKit API key to AndroidManifest.xml
  */
-const withYandexMapkit = (config, { apiKey }) => {
+const withYandexMapkit = (config, { apiKey } = {}) => {
   if (!apiKey) {
     throw new Error("Yandex MapKit: apiKey is required");
   }
 
-  // Add metadata to AndroidManifest.xml
-  config = AndroidConfig.Manifest.addMetaDataItemToMainApplication(
-    config,
-    "com.yandex.mapkit.ApiKey",
-    apiKey
-  );
-
-  return config;
+  return withAndroidManifest(config, (cfg) => {
+    const mainApplication =
+      AndroidConfig.Manifest.getMainApplicationOrThrow(cfg.modResults);
+    AndroidConfig.Manifest.addMetaDataItemToMainApplication(
+      mainApplication,
+      "com.yandex.mapkit.ApiKey",
+      apiKey
+    );
+    return cfg;
+  });
 };
 
-// Export as a function that can be used in app.json plugins array
 module.exports = createRunOncePlugin(withYandexMapkit, "react-native-yamap");
