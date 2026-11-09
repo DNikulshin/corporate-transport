@@ -131,6 +131,21 @@ mobile/
    npm start
    ```
 
+### Проверка на Android-эмуляторе (GitHub Actions)
+
+Workflow `.github/workflows/android-e2e.yml` собирает release-APK и запускает его
+на реальном эмуляторе (KVM на `ubuntu-latest`):
+
+1. `npm ci` (применяет `patches/` через postinstall) → `expo prebuild -p android`
+2. `./gradlew assembleRelease` только под `x86_64`
+3. `ReactiveCircus/android-emulator-runner` (API 34, Pixel 6)
+4. `scripts/android-smoke.sh` — установка APK, запуск `MainActivity`,
+   проверка, что отрисовался экран входа (`Корпоративный транспорт`), и что
+   в logcat нет `FATAL EXCEPTION`.
+
+Скриншот, `ui.xml` и logcat складываются в артефакт `android-emulator-artifacts`.
+Запуск вручную: `gh workflow run android-e2e.yml`.
+
 ### Тестовые аккаунты (те же что и в вебе):
 
 - `driver1` / `password123` - водитель с автомобилем
