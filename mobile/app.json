@@ -52,6 +52,14 @@
         {
           "apiKey": "0c3c2c36-736e-4285-843a-2f4c3968c728"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
       ]
     ],
     "experiments": {
